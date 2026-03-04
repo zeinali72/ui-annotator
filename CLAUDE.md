@@ -210,11 +210,15 @@ You should see `ui-annotator` listed as connected with the `get_ui_feedback` too
 
 ### Starting the server
 
-Claude Code will not auto-start the server. Run this before each session:
+**Claude Code auto-starts the server** via the MCP config — no manual `npm start` needed.
 
-```bash
-cd /home/farzan/ui-annotator && npm start
-```
+> **WARNING:** Do NOT run `npm start` manually while Claude Code is running. Claude Code's
+> MCP config spawns `node src/index.js` automatically, which binds port 3847 and starts the
+> HTTP bridge. If you also run `npm start`, the manually-started instance steals port 3847,
+> leaving Claude Code's instance without an HTTP bridge. Chrome feedback will be stored in the
+> wrong process and `get_ui_feedback()` will always return empty.
+>
+> If you accidentally started a manual instance, kill it: `pkill -f "node src/index.js"`
 
 ---
 
@@ -269,7 +273,7 @@ cd /home/farzan/ui-annotator && npm start
 
 - **Cross-origin iframes** — `html2canvas` cannot capture content inside cross-origin iframes; those areas will appear blank in the screenshot.
 - **Localhost only** — the extension's `host_permissions` and content script matches are restricted to `http://localhost/*` and `http://127.0.0.1/*`. Remote dev servers are not supported without modifying the manifest.
-- **Manual server start** — the MCP server must be started manually (`npm start`) before each Claude Code session. Claude Code does not auto-start it.
+- **Do not run `npm start` manually** — Claude Code auto-spawns the MCP server via its MCP config. Running a second instance manually steals port 3847 from Claude Code's instance, causing `get_ui_feedback()` to always return empty.
 - **No persistent storage** — feedback is held in memory. If the server restarts before Claude reads the batch, the data is lost.
 - **One batch at a time** — a new submission immediately overwrites the previous one. There is no queue or history.
 - **html2canvas fidelity** — complex CSS (`clip-path`, custom fonts, SVG filters) and cross-origin assets may not render faithfully.
