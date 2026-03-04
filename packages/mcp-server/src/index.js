@@ -56,24 +56,44 @@ server.tool(
       };
     }
 
-    const { screenshotBase64, ...batchMeta } = batch;
-
     // Consume the batch — each submission is read exactly once
     clearFeedback();
 
-    return {
-      content: [
-        {
+    const content = [];
+
+    for (const ann of batch.annotations) {
+      content.push({
+        type: 'text',
+        text: `Annotation #${ann.id} — selector: ${ann.selector}\nElement: <${ann.elementTag}> "${ann.elementText}"\nComment: ${ann.comment}`,
+      });
+      if (ann.elementScreenshot) {
+        content.push({
           type: 'image',
-          data: screenshotBase64,
-          mimeType: 'image/png',
-        },
-        {
-          type: 'text',
-          text: JSON.stringify(batchMeta, null, 2),
-        },
-      ],
-    };
+          data: ann.elementScreenshot,
+          mimeType: 'image/jpeg',
+        });
+      }
+    }
+
+    content.push({
+      type: 'text',
+      text: JSON.stringify({
+        id:              batch.id,
+        receivedAt:      batch.receivedAt,
+        pageUrl:         batch.pageUrl,
+        pageTitle:       batch.pageTitle,
+        annotationCount: batch.annotations.length,
+        annotations:     batch.annotations.map(a => ({
+          id:          a.id,
+          selector:    a.selector,
+          elementTag:  a.elementTag,
+          elementText: a.elementText,
+          comment:     a.comment,
+        })),
+      }, null, 2),
+    });
+
+    return { content };
   }
 );
 

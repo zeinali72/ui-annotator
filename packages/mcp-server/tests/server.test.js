@@ -15,18 +15,18 @@ const TEST_PORT = 3848;
 const BASE_URL  = `http://127.0.0.1:${TEST_PORT}`;
 
 const VALID_PAYLOAD = {
-  pageUrl:          'http://localhost:3000/dashboard',
-  pageTitle:        'My Dev App',
-  screenshotBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk',
+  pageUrl:   'http://localhost:3000/dashboard',
+  pageTitle: 'My Dev App',
   annotations: [
     {
-      id:          1,
-      selector:    '#submit-btn',
-      elementTag:  'button',
-      elementText: 'Submit',
-      x:           42.5,
-      y:           67.2,
-      comment:     'Button colour fails WCAG contrast ratio.',
+      id:                1,
+      selector:          '#submit-btn',
+      elementTag:        'button',
+      elementText:       'Submit',
+      x:                 42.5,
+      y:                 67.2,
+      comment:           'Button colour fails WCAG contrast ratio.',
+      elementScreenshot: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk',
     },
   ],
 };
@@ -110,17 +110,16 @@ describe('HTTP Bridge', () => {
     assert.ok(body.error, 'error field should be present');
   });
 
-  test('POST /feedback rejects missing screenshotBase64', async () => {
-    const { screenshotBase64: _, ...noScreenshot } = VALID_PAYLOAD;
+  test('POST /feedback accepts payload without screenshotBase64', async () => {
     const res  = await fetch(`${BASE_URL}/feedback`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(noScreenshot),
+      body:    JSON.stringify(VALID_PAYLOAD),
     });
     const body = await res.json();
 
-    assert.strictEqual(res.status, 400);
-    assert.ok(body.error, 'error field should be present');
+    assert.strictEqual(res.status, 200);
+    assert.ok(body.id, 'id field should be present');
   });
 
   test('POST /feedback rejects non-array annotations', async () => {

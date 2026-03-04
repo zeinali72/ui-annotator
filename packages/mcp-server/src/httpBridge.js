@@ -48,13 +48,10 @@ export function buildApp() {
 
   // ── POST /feedback ─────────────────────────────────────────────────────────
   app.post('/feedback', (req, res) => {
-    const { pageUrl, screenshotBase64, annotations } = req.body ?? {};
+    const { pageUrl, annotations } = req.body ?? {};
 
     if (!pageUrl || typeof pageUrl !== 'string') {
       return res.status(400).json({ error: 'Missing or invalid field: pageUrl (string required).' });
-    }
-    if (!screenshotBase64 || typeof screenshotBase64 !== 'string') {
-      return res.status(400).json({ error: 'Missing or invalid field: screenshotBase64 (base64 string required).' });
     }
     if (!Array.isArray(annotations)) {
       return res.status(400).json({ error: 'Missing or invalid field: annotations (array required).' });
@@ -63,7 +60,6 @@ export function buildApp() {
     const batch = saveFeedback({
       pageUrl,
       pageTitle: typeof req.body.pageTitle === 'string' ? req.body.pageTitle : '',
-      screenshotBase64,
       annotations,
     });
 

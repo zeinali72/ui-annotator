@@ -505,6 +505,30 @@ function handleOverlayClick(e) {
   );
 }
 
+// ─── Per-element capture ──────────────────────────────────────────────────────
+
+/**
+ * Capture a single DOM element as a JPEG and return the raw base64 string.
+ * Returns null if the element is not found or capture fails.
+ * @param {string} selector
+ * @returns {Promise<string|null>}
+ */
+async function captureElement(selector) {
+  const el = document.querySelector(selector);
+  if (!el) return null;
+
+  el.scrollIntoView({ block: 'center' });
+  await new Promise(r => setTimeout(r, 100));
+
+  const canvas = await html2canvas(el, {
+    useCORS:         true,
+    allowTaint:      true,
+    backgroundColor: '#ffffff',
+  });
+
+  return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+}
+
 // ─── Send feedback ────────────────────────────────────────────────────────────
 
 async function sendFeedback() {
@@ -518,27 +542,28 @@ async function sendFeedback() {
   if (activePopover) activePopover.style.display = 'none';
   if (overlay)       overlay.style.display = 'none';
 
-  let screenshotBase64;
+  let annotations;
   try {
-    const canvas = await html2canvas(document.body, {
-      useCORS:      true,
-      allowTaint:   true,
-      scale:        window.devicePixelRatio || 1,
-      width:        document.documentElement.scrollWidth,
-      height:       document.documentElement.scrollHeight,
-      windowWidth:  document.documentElement.scrollWidth,
-      windowHeight: document.documentElement.scrollHeight,
-      scrollX:      0,
-      scrollY:      0,
-    });
-    // Strip the data:image/png;base64, prefix
-    screenshotBase64 = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+    annotations = [];
+    for (const pin of pins) {
+      const elementScreenshot = await captureElement(pin.selector);
+      annotations.push({
+        id:              pin.id,
+        selector:        pin.selector,
+        elementTag:      pin.elementTag,
+        elementText:     pin.elementText,
+        x:               pin.x,
+        y:               pin.y,
+        comment:         pin.comment,
+        elementScreenshot: elementScreenshot ?? null,
+      });
+    }
   } catch (err) {
     if (toolbar) toolbar.style.display = '';
     if (activePopover) activePopover.style.display = '';
     if (overlay) overlay.style.display = '';
     if (sendBtn) sendBtn.removeAttribute('disabled');
-    showToast(`Screenshot failed: ${err.message}`, 'error');
+    showToast(`Capture failed: ${err.message}`, 'error');
     return;
   }
 
@@ -548,10 +573,9 @@ async function sendFeedback() {
   if (overlay)       overlay.style.display = '';
 
   const payload = {
-    pageUrl:         location.href,
-    pageTitle:       document.title,
-    screenshotBase64,
-    annotations:     pins,
+    pageUrl:     location.href,
+    pageTitle:   document.title,
+    annotations,
   };
 
   try {

@@ -6,21 +6,21 @@
  * receives the POST and a different instance handles get_ui_feedback().
  *
  * @typedef {Object} Annotation
- * @property {number} id          - Pin number shown on screenshot (1-based)
- * @property {string} selector    - CSS selector of the target element
- * @property {string} elementTag  - Tag name of the target element, e.g. "button"
- * @property {string} elementText - Trimmed innerText of the element (max 100 chars)
- * @property {number} x           - Pin x position as percentage of page width
- * @property {number} y           - Pin y position as percentage of page height
- * @property {string} comment     - Developer comment for this pin
+ * @property {number}      id                - Pin number shown on screenshot (1-based)
+ * @property {string}      selector          - CSS selector of the target element
+ * @property {string}      elementTag        - Tag name of the target element, e.g. "button"
+ * @property {string}      elementText       - Trimmed innerText of the element (max 100 chars)
+ * @property {number}      x                 - Pin x position as percentage of page width
+ * @property {number}      y                 - Pin y position as percentage of page height
+ * @property {string}      comment           - Developer comment for this pin
+ * @property {string|null} elementScreenshot - JPEG base64 of just this element (no data: prefix), or null
  *
  * @typedef {Object} FeedbackBatch
- * @property {string}       id                - UUID v4 assigned on receipt
- * @property {string}       receivedAt        - ISO 8601 timestamp of receipt
- * @property {string}       pageUrl           - URL of the annotated page
- * @property {string}       pageTitle         - Document title of the annotated page
- * @property {string}       screenshotBase64  - Raw PNG base64 string (no data: prefix)
- * @property {Annotation[]} annotations       - Ordered list of annotation pins
+ * @property {string}       id          - UUID v4 assigned on receipt
+ * @property {string}       receivedAt  - ISO 8601 timestamp of receipt
+ * @property {string}       pageUrl     - URL of the annotated page
+ * @property {string}       pageTitle   - Document title of the annotated page
+ * @property {Annotation[]} annotations - Ordered list of annotation pins
  */
 
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
