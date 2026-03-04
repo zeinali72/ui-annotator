@@ -8,6 +8,18 @@
 
 ---
 
+## Current status
+
+| Item | Status |
+|---|---|
+| Version | 0.1.0 |
+| MCP server | ✅ Implemented and tested |
+| Chrome extension | ✅ Implemented (manual testing required) |
+| Integration tests | ✅ 12/12 passing |
+| Last updated | 2026-03-04 |
+
+---
+
 ## Project purpose
 
 **ui-annotator** is a local developer tool that lets a developer open their running dev site in Chrome, drop numbered annotation pins on any UI element, write a short comment per pin, capture a screenshot with the pins overlaid, and send the whole bundle to a local MCP server. Claude Code can then call the `get_ui_feedback` MCP tool to read the latest feedback batch and act on it — creating a tight visual-feedback loop between a developer and an AI coding assistant without leaving the terminal.
@@ -64,8 +76,8 @@
 | File | Responsibility |
 |---|---|
 | `index.js` | Entry point. Starts the HTTP bridge, creates the `McpServer` instance, registers the `get_ui_feedback` tool, and connects to Claude Code via `StdioServerTransport`. |
-| `httpBridge.js` | Creates an Express app with `POST /feedback` (receives batches from the extension) and `GET /health` (liveness probe). Calls `storeBatch()` on each valid POST. |
-| `store.js` | Thin in-memory singleton. Exports `storeBatch()`, `getLatestBatch()`, and `clearStore()`. Only the most recent batch is retained. |
+| `httpBridge.js` | Exports `buildApp()` (routes) and `startBridge(port)` (listen + returns `{ app, server }`). Handles `POST /feedback`, `GET /health`, `DELETE /feedback`. Calls `saveFeedback()` on valid POSTs. |
+| `store.js` | In-memory singleton. Exports `saveFeedback()`, `getLatestFeedback()`, `clearFeedback()`, `hasFeedback()`. Assigns UUID v4 and `receivedAt` timestamp on save. |
 
 ### Chrome Extension (`packages/chrome-extension/`)
 
@@ -216,14 +228,13 @@ cd /home/farzan/ui-annotator && npm start
 6. Developer clicks **Capture & Send** in the popup.
 7. `popup.js` sends `CAPTURE` to `content.js`.
 8. `content.js` calls `html2canvas(document.body)` to render the page (with pins visible) to a canvas, then returns `{ screenshotDataUrl, annotations, pageUrl }` to the popup.
-9. `popup.js` forwards the payload to `background.js` via `SEND_FEEDBACK`.
-10. `background.js` POSTs the JSON payload to `http://127.0.0.1:3333/feedback`.
-11. `httpBridge.js` validates the payload and calls `storeBatch()`, replacing any previous batch in the store.
-12. The popup status bar shows **"Feedback sent! Claude Code can now read it."**
-13. Developer switches to their terminal and asks Claude Code to review the UI feedback.
-14. Claude Code calls the `get_ui_feedback()` MCP tool.
-15. `index.js` calls `getLatestBatch()` and returns the `FeedbackBatch` as a JSON string.
-16. Claude Code receives the screenshot and annotations and can now describe, explain, or fix the issues.
+9. `content.js` POSTs the JSON payload directly to `http://localhost:3847/feedback`.
+10. `httpBridge.js` validates the payload and calls `saveFeedback()`, replacing any previous batch in the store.
+11. The annotation toolbar shows a green toast **"✓ Sent to Claude! You can now ask Claude Code to review your UI."** for 3 seconds, then annotation mode deactivates.
+12. Developer switches to their terminal and asks Claude Code to review the UI feedback.
+13. Claude Code calls the `get_ui_feedback()` MCP tool.
+14. `index.js` calls `getLatestFeedback()`, returns the screenshot as an `image` content item and the full batch JSON as a `text` content item, then calls `clearFeedback()` to consume the batch.
+15. Claude Code receives the annotated screenshot and structured annotations and can now describe, explain, or fix the issues.
 
 ---
 
@@ -236,13 +247,13 @@ cd /home/farzan/ui-annotator && npm start
 - **JSDoc comments** on every exported function and every non-obvious internal function. Use `@typedef` blocks for shared types (`FeedbackBatch`, `Annotation`).
 - **No global state** outside of `store.js` and the `pins` array in `content.js`.
 - **Error handling** — always `try/catch` async popup/background code; surface errors to the status bar, not just the console.
-- **Port configuration** — the HTTP bridge port defaults to `3333` and can be overridden via the `UI_ANNOTATOR_PORT` environment variable.
+- **Port configuration** — the HTTP bridge port defaults to `3847` and can be overridden via the `PORT_BRIDGE` environment variable.
 
 ---
 
 ## Test strategy
 
-- **MCP Server** — Node built-in test runner (`node --test`). Tests live in `packages/mcp-server/tests/`. Current coverage: `store.js` unit tests. Planned: HTTP bridge integration tests using `fetch()` against a real Express instance.
+- **MCP Server** — Node built-in test runner (`node --test`). Tests live in `packages/mcp-server/tests/`. Coverage: HTTP bridge integration tests (8 cases — health, POST, validation, DELETE, unique IDs) + store unit tests (4 cases). 12/12 passing.
 - **Chrome Extension** — Manual checklist (automated browser testing is out of scope for the initial version):
   - [ ] Pin mode enables/disables correctly
   - [ ] Pins appear at the correct position after clicking
@@ -254,11 +265,23 @@ cd /home/farzan/ui-annotator && npm start
 
 ---
 
-## Known limitations and future work
+## Known limitations
 
-- **Single batch** — only the most recent feedback batch is stored. A queue or history would allow reviewing multiple capture sessions.
-- **Pin positions** — pins use fixed viewport coordinates; if the page scrolls between pin placement and capture the positions may drift.
-- **html2canvas fidelity** — complex CSS (e.g., `clip-path`, custom fonts, iframes) may not render perfectly.
-- **No persistence** — restarting the MCP server clears all feedback. A simple JSON file or SQLite store would add durability.
-- **Icon placeholder** — a real 128×128 PNG icon needs to be created.
-- _(Add more items here as they are discovered.)_
+- **Cross-origin iframes** — `html2canvas` cannot capture content inside cross-origin iframes; those areas will appear blank in the screenshot.
+- **Localhost only** — the extension's `host_permissions` and content script matches are restricted to `http://localhost/*` and `http://127.0.0.1/*`. Remote dev servers are not supported without modifying the manifest.
+- **Manual server start** — the MCP server must be started manually (`npm start`) before each Claude Code session. Claude Code does not auto-start it.
+- **No persistent storage** — feedback is held in memory. If the server restarts before Claude reads the batch, the data is lost.
+- **One batch at a time** — a new submission immediately overwrites the previous one. There is no queue or history.
+- **html2canvas fidelity** — complex CSS (`clip-path`, custom fonts, SVG filters) and cross-origin assets may not render faithfully.
+- **Pin scroll drift** — pins are placed at viewport-relative coordinates at click time; if the page is scrolled significantly between pin placement and capture, positions may appear slightly off.
+
+---
+
+## Future work
+
+- **Auto-start via Claude Code hooks** — use a `pre-tool-use` hook to start the MCP server automatically when `get_ui_feedback` is first called.
+- **Remote dev server support** — make allowed origins configurable via an env var so the extension can work against staging or remote tunnels.
+- **Multi-batch queue** — replace the single-slot store with a FIFO queue so multiple capture sessions can be queued and consumed in order.
+- **VS Code extension** — build an alternative to the Chrome extension that works inside VS Code's embedded browser preview.
+- **Highlight affected DOM elements** — after Claude reads feedback, have it return CSS selectors back to the extension so the relevant elements can be highlighted in the page.
+- **Next.js app-directory sidebar** — generate a page tree from the `app/` directory and display it in the popup for quick navigation.
