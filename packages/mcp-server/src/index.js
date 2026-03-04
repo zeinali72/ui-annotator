@@ -27,7 +27,7 @@ const { version } = JSON.parse(
 
 // ── HTTP bridge ───────────────────────────────────────────────────────────────
 const HTTP_PORT = Number(process.env.PORT_BRIDGE ?? 3847);
-startBridge(HTTP_PORT);
+const { server: httpServer } = startBridge(HTTP_PORT);
 
 // ── MCP server ────────────────────────────────────────────────────────────────
 const server = new McpServer({
@@ -82,3 +82,11 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 console.error('UI Annotator MCP server ready');
+
+// ── Graceful shutdown ─────────────────────────────────────────────────────────
+function shutdown() {
+  if (httpServer) httpServer.close();
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

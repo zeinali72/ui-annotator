@@ -83,13 +83,22 @@ export function buildApp() {
 /**
  * Start the HTTP bridge on the given port.
  * Returns both the Express app and the raw http.Server so callers can close it.
+ * If the port is already in use, logs a warning and returns null for server.
  * @param {number} [port]
- * @returns {{ app: import('express').Application, server: import('http').Server }}
+ * @returns {{ app: import('express').Application, server: import('http').Server | null }}
  */
 export function startBridge(port = DEFAULT_PORT) {
   const app = buildApp();
   const server = app.listen(port, '127.0.0.1', () => {
     console.error(`UI Annotator HTTP bridge listening on port ${port}`);
+  });
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${port} already in use — assuming another instance is running, continuing without HTTP bridge`);
+      server.close();
+    } else {
+      throw err;
+    }
   });
   return { app, server };
 }
