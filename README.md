@@ -225,4 +225,4 @@ Please read [CLAUDE.md](CLAUDE.md) before contributing — it contains the full 
 
 ## License
 
-MIT © 2025
+MIT © 2026
