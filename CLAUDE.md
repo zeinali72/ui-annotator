@@ -148,26 +148,60 @@ cd packages/mcp-server && npm test
 
 ## Connecting the MCP server to Claude Code
 
-Add the following to your Claude Code MCP configuration (typically `.claude/mcp_servers.json` in the repo root, or `~/.claude/mcp_servers.json` globally):
+The ready-to-use config is in `mcp-config.json` at the repo root.
+Repo path on this machine: `/home/farzan/ui-annotator`
+
+### Option A — Per-project (recommended)
+
+Copy `mcp-config.json` into your project's Claude Code config directory:
+
+```bash
+mkdir -p .claude
+cp /home/farzan/ui-annotator/mcp-config.json .claude/mcp_servers.json
+```
+
+Or use the Claude Code CLI to register it in one command:
+
+```bash
+claude mcp add ui-annotator node /home/farzan/ui-annotator/packages/mcp-server/src/index.js
+```
+
+### Option B — Global (available in all Claude Code sessions)
+
+Add the `"ui-annotator"` entry from `mcp-config.json` to:
+
+```
+~/.config/claude/mcp_servers.json
+```
 
 ```json
 {
   "mcpServers": {
     "ui-annotator": {
       "command": "node",
-      "args": ["packages/mcp-server/src/index.js"],
-      "cwd": "/absolute/path/to/ui-annotator"
+      "args": ["/home/farzan/ui-annotator/packages/mcp-server/src/index.js"],
+      "env": {}
     }
   }
 }
 ```
 
-Replace `/absolute/path/to/ui-annotator` with the actual path on your machine.
+### Verifying the connection
 
-After saving, restart Claude Code. You can verify the tool is registered by running:
+After adding the config, restart Claude Code, then run:
 
 ```
 /mcp
+```
+
+You should see `ui-annotator` listed as connected with the `get_ui_feedback` tool available.
+
+### Starting the server
+
+Claude Code will not auto-start the server. Run this before each session:
+
+```bash
+cd /home/farzan/ui-annotator && npm start
 ```
 
 ---

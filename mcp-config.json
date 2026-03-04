@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ui-annotator": {
+      "command": "node",
+      "args": ["/home/farzan/ui-annotator/packages/mcp-server/src/index.js"],
+      "env": {}
+    }
+  }
+}
