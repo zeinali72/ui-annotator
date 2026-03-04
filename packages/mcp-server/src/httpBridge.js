@@ -24,7 +24,7 @@ function requestLogger(req, res, next) {
   const start = Date.now();
   res.on('finish', () => {
     const ts = new Date().toISOString();
-    console.log(`[${ts}] ${req.method} ${req.path} → ${res.statusCode} (${Date.now() - start}ms)`);
+    console.error(`[${ts}] ${req.method} ${req.path} → ${res.statusCode} (${Date.now() - start}ms)`);
   });
   next();
 }
@@ -67,7 +67,7 @@ export function buildApp() {
       annotations,
     });
 
-    console.log(`[http-bridge] Stored feedback batch ${batch.id} — ${annotations.length} annotation(s) from ${pageUrl}`);
+    console.error(`[http-bridge] Stored feedback batch ${batch.id} — ${annotations.length} annotation(s) from ${pageUrl}`);
     res.json({ success: true, id: batch.id });
   });
 
@@ -89,7 +89,7 @@ export function buildApp() {
 export function startBridge(port = DEFAULT_PORT) {
   const app = buildApp();
   const server = app.listen(port, '127.0.0.1', () => {
-    console.log(`UI Annotator HTTP bridge listening on port ${port}`);
+    console.error(`UI Annotator HTTP bridge listening on port ${port}`);
   });
   return { app, server };
 }
