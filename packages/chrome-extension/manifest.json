@@ -13,14 +13,13 @@
     "http://127.0.0.1/*"
   ],
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_title": "Start UI Annotation",
     "default_icon": {
       "128": "icons/icon128.png"
     }
   },
   "background": {
-    "service_worker": "src/background.js",
-    "type": "module"
+    "service_worker": "src/background.js"
   },
   "content_scripts": [
     {

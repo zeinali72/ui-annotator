@@ -1,31 +1,33 @@
 /**
  * background.js
  * Manifest V3 service worker for the UI Annotator extension.
+ *
  * Responsibilities:
- *   - Relay capture results from the content script to the MCP HTTP bridge
- *   - Handle any cross-origin fetch that the popup cannot perform directly
+ *   - Listen for the toolbar action click and inject the content script + activate
+ *     annotation mode on the active tab.
+ *   - (content.js posts directly to the HTTP bridge — no relay needed here.)
  */
 
-const MCP_BRIDGE_URL = 'http://127.0.0.1:3333/feedback';
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) return;
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'SEND_FEEDBACK') {
-    const { screenshotDataUrl, annotations, pageUrl } = message.payload;
-
-    fetch(MCP_BRIDGE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ screenshotDataUrl, annotations, pageUrl }),
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        sendResponse({ ok: res.ok, data });
-      })
-      .catch((err) => {
-        console.error('[background] Failed to send feedback:', err);
-        sendResponse({ ok: false, error: err.message });
-      });
-
-    return true; // keep message channel open for async response
+  try {
+    // Ensure content script is injected (idempotent — manifest already injects it
+    // on matching origins, but scripting.executeScript covers manual activation on
+    // any tab the user has open).
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files:  ['lib/html2canvas.min.js', 'src/content.js'],
+    });
+  } catch {
+    // Script may already be injected — proceed to send the message regardless
   }
+
+  chrome.tabs.sendMessage(tab.id, { action: 'START_ANNOTATION' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('[background] Could not start annotation:', chrome.runtime.lastError.message);
+    } else {
+      console.log('[background] Annotation mode started:', response);
+    }
+  });
 });
