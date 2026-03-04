@@ -1,13 +1,13 @@
 {
   "name": "ui-annotator",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "packages/mcp-server",
-    "packages/chrome-extension"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
-    "test": "npm test --workspace=packages/mcp-server"
+    "start": "npm run start --workspace=packages/mcp-server",
+    "dev": "npm run dev --workspace=packages/mcp-server",
+    "test": "npm run test --workspace=packages/mcp-server",
+    "install:all": "npm install"
   },
   "engines": {
     "node": ">=18"
