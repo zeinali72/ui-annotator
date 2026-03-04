@@ -17,7 +17,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { getLatestFeedback, clearFeedback } from './store.js';
-import { startHttpBridge } from './httpBridge.js';
+import { startBridge } from './httpBridge.js';
 
 // ── Read version from package.json ────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +27,7 @@ const { version } = JSON.parse(
 
 // ── HTTP bridge ───────────────────────────────────────────────────────────────
 const HTTP_PORT = Number(process.env.PORT_BRIDGE ?? 3847);
-startHttpBridge(HTTP_PORT);
+startBridge(HTTP_PORT);
 
 // ── MCP server ────────────────────────────────────────────────────────────────
 const server = new McpServer({

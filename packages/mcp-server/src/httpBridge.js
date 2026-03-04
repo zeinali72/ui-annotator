@@ -1,8 +1,6 @@
 /**
  * httpBridge.js
  * Express HTTP server bridging the Chrome extension and the MCP server.
- * The extension POSTs annotated feedback here; the MCP tool reads from the
- * shared in-memory store.
  *
  * Endpoints:
  *   POST   /feedback  — receive a FeedbackBatch from the extension
@@ -17,7 +15,7 @@ import { saveFeedback, clearFeedback, hasFeedback } from './store.js';
 const DEFAULT_PORT = 3847;
 
 /**
- * Request logger middleware — prints timestamp, method, path, and response status.
+ * Request logger middleware.
  * @param {import('express').Request}  req
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
@@ -32,11 +30,11 @@ function requestLogger(req, res, next) {
 }
 
 /**
- * Create and start the Express HTTP bridge.
- * @param {number} [port]
- * @returns {import('http').Server}
+ * Build the Express app (routes only, no listen).
+ * Exported separately so tests can mount it without starting a real server.
+ * @returns {import('express').Application}
  */
-export function startHttpBridge(port = DEFAULT_PORT) {
+export function buildApp() {
   const app = express();
 
   app.use(cors());
@@ -79,10 +77,22 @@ export function startHttpBridge(port = DEFAULT_PORT) {
     res.json({ success: true });
   });
 
-  // ── Start ──────────────────────────────────────────────────────────────────
+  return app;
+}
+
+/**
+ * Start the HTTP bridge on the given port.
+ * Returns both the Express app and the raw http.Server so callers can close it.
+ * @param {number} [port]
+ * @returns {{ app: import('express').Application, server: import('http').Server }}
+ */
+export function startBridge(port = DEFAULT_PORT) {
+  const app = buildApp();
   const server = app.listen(port, '127.0.0.1', () => {
     console.log(`UI Annotator HTTP bridge listening on port ${port}`);
   });
-
-  return server;
+  return { app, server };
 }
+
+// Keep the old name as an alias so any external callers are not broken.
+export const startHttpBridge = (port = DEFAULT_PORT) => startBridge(port).server;
