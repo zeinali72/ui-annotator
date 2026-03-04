@@ -1,51 +1,83 @@
 /**
  * server.test.js
- * Unit and integration tests for the MCP server using Node's built-in test runner.
+ * Unit tests for the MCP server using Node's built-in test runner.
  * Run with: npm test (from packages/mcp-server)
  */
 
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { storeBatch, getLatestBatch, clearStore } from '../src/store.js';
+import { saveFeedback, getLatestFeedback, clearFeedback, hasFeedback } from '../src/store.js';
+
+const SAMPLE_BATCH = {
+  pageUrl: 'http://localhost:3000',
+  pageTitle: 'My Dev App',
+  screenshotBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk',
+  annotations: [
+    {
+      id: 1,
+      selector: '#submit-btn',
+      elementTag: 'button',
+      elementText: 'Submit',
+      x: 42.5,
+      y: 67.2,
+      comment: 'This button colour does not meet contrast requirements.',
+    },
+  ],
+};
 
 describe('store', () => {
   beforeEach(() => {
-    clearStore();
+    clearFeedback();
   });
 
-  test('getLatestBatch returns null when empty', () => {
-    assert.equal(getLatestBatch(), null);
+  test('getLatestFeedback returns null when store is empty', () => {
+    assert.equal(getLatestFeedback(), null);
   });
 
-  test('storeBatch persists a batch and getLatestBatch returns it', () => {
-    const batch = {
-      screenshotDataUrl: 'data:image/png;base64,abc123',
-      annotations: [{ id: 1, comment: 'Fix this button', x: 50, y: 30, selector: '#submit-btn' }],
-      pageUrl: 'http://localhost:3000',
-    };
+  test('hasFeedback returns false when store is empty', () => {
+    assert.equal(hasFeedback(), false);
+  });
 
-    storeBatch(batch);
-    const result = getLatestBatch();
+  test('saveFeedback stores a batch and returns it with id and receivedAt', () => {
+    const result = saveFeedback(SAMPLE_BATCH);
 
-    assert.equal(result.screenshotDataUrl, batch.screenshotDataUrl);
-    assert.deepEqual(result.annotations, batch.annotations);
-    assert.equal(result.pageUrl, batch.pageUrl);
+    assert.ok(result.id, 'id should be set');
+    assert.match(result.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/, 'id should be a UUID v4');
     assert.ok(result.receivedAt, 'receivedAt should be set');
+    assert.doesNotThrow(() => new Date(result.receivedAt), 'receivedAt should be a valid date');
+    assert.equal(result.pageUrl, SAMPLE_BATCH.pageUrl);
+    assert.deepEqual(result.annotations, SAMPLE_BATCH.annotations);
   });
 
-  test('storeBatch replaces previous batch', () => {
-    storeBatch({ screenshotDataUrl: 'data:image/png;base64,old', annotations: [], pageUrl: '' });
-    storeBatch({ screenshotDataUrl: 'data:image/png;base64,new', annotations: [], pageUrl: '' });
-
-    const result = getLatestBatch();
-    assert.equal(result.screenshotDataUrl, 'data:image/png;base64,new');
+  test('getLatestFeedback returns stored batch', () => {
+    saveFeedback(SAMPLE_BATCH);
+    const batch = getLatestFeedback();
+    assert.ok(batch);
+    assert.equal(batch.pageUrl, SAMPLE_BATCH.pageUrl);
   });
 
-  test('clearStore resets to null', () => {
-    storeBatch({ screenshotDataUrl: 'data:image/png;base64,x', annotations: [], pageUrl: '' });
-    clearStore();
-    assert.equal(getLatestBatch(), null);
+  test('hasFeedback returns true after saveFeedback', () => {
+    saveFeedback(SAMPLE_BATCH);
+    assert.equal(hasFeedback(), true);
+  });
+
+  test('saveFeedback replaces previous batch', () => {
+    saveFeedback({ ...SAMPLE_BATCH, pageUrl: 'http://localhost:3000/old' });
+    saveFeedback({ ...SAMPLE_BATCH, pageUrl: 'http://localhost:3000/new' });
+    assert.equal(getLatestFeedback().pageUrl, 'http://localhost:3000/new');
+  });
+
+  test('clearFeedback resets to null', () => {
+    saveFeedback(SAMPLE_BATCH);
+    clearFeedback();
+    assert.equal(getLatestFeedback(), null);
+    assert.equal(hasFeedback(), false);
+  });
+
+  test('saveFeedback does not mutate the input object', () => {
+    const input = { ...SAMPLE_BATCH };
+    saveFeedback(input);
+    assert.equal(input.id, undefined, 'input should not gain id property');
+    assert.equal(input.receivedAt, undefined, 'input should not gain receivedAt property');
   });
 });
-
-// TODO: Add integration tests for the HTTP bridge endpoints using fetch()
