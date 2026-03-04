@@ -1,0 +1,103 @@
+/* popup.css — styles for the UI Annotator popup */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  width: 280px;
+  min-height: 200px;
+  color: #1a202c;
+  background: #f7fafc;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #2d3748;
+  color: #fff;
+}
+
+header h1 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+main {
+  padding: 12px;
+}
+
+.status {
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status.idle     { background: #edf2f7; color: #4a5568; }
+.status.active   { background: #ebf8ff; color: #2b6cb0; }
+.status.success  { background: #f0fff4; color: #276749; }
+.status.error    { background: #fff5f5; color: #c53030; }
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.btn {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn.primary  { background: #3182ce; color: #fff; }
+.btn.success  { background: #38a169; color: #fff; }
+.btn.danger   { background: #e53e3e; color: #fff; }
+
+.btn:not(:disabled):hover { opacity: 0.88; }
+
+#pin-list-section h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #718096;
+  margin-bottom: 6px;
+}
+
+#pin-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+#pin-list li {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#pin-list li strong {
+  color: #e53e3e;
+  margin-right: 4px;
+}

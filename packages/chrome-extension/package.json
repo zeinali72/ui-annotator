@@ -1,0 +1,9 @@
+{
+  "name": "@ui-annotator/chrome-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for dropping annotation pins on UI elements and capturing screenshots",
+  "private": true,
+  "scripts": {
+    "build": "echo 'No build step — load src/ directly as unpacked extension'"
+  }
+}

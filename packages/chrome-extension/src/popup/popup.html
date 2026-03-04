@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Annotator</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <img src="../../icons/icon128.png" alt="UI Annotator" width="32" height="32" />
+    <h1>UI Annotator</h1>
+  </header>
+
+  <main>
+    <div id="status-bar" class="status idle">Ready</div>
+
+    <div class="controls">
+      <button id="btn-toggle-pins" class="btn primary">Enable Pin Mode</button>
+      <button id="btn-capture" class="btn success">Capture &amp; Send</button>
+      <button id="btn-clear" class="btn danger">Clear Pins</button>
+    </div>
+
+    <section id="pin-list-section">
+      <h2>Pins (<span id="pin-count">0</span>)</h2>
+      <ol id="pin-list"></ol>
+    </section>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
