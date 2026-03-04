@@ -1,7 +1,9 @@
 /**
  * store.js
- * In-memory store for the latest FeedbackBatch received from the Chrome extension.
- * Only the most recent batch is retained; each batch is consumed once by get_ui_feedback.
+ * File-based store for the latest FeedbackBatch received from the Chrome extension.
+ * Uses a temp file so multiple processes (HTTP bridge instance and MCP stdio instance)
+ * share the same feedback data — solving the split-process problem where one instance
+ * receives the POST and a different instance handles get_ui_feedback().
  *
  * @typedef {Object} Annotation
  * @property {number} id          - Pin number shown on screenshot (1-based)
@@ -21,8 +23,11 @@
  * @property {Annotation[]} annotations       - Ordered list of annotation pins
  */
 
-/** @type {FeedbackBatch | null} */
-let latestBatch = null;
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const STORE_PATH = join(tmpdir(), 'ui-annotator-feedback.json');
 
 /**
  * Save a new feedback batch, replacing any previous one.
@@ -31,12 +36,13 @@ let latestBatch = null;
  * @returns {FeedbackBatch} The stored batch with id and receivedAt populated.
  */
 export function saveFeedback(batch) {
-  latestBatch = {
+  const stored = {
     ...batch,
     id: crypto.randomUUID(),
     receivedAt: new Date().toISOString(),
   };
-  return latestBatch;
+  writeFileSync(STORE_PATH, JSON.stringify(stored), 'utf8');
+  return stored;
 }
 
 /**
@@ -44,14 +50,19 @@ export function saveFeedback(batch) {
  * @returns {FeedbackBatch | null}
  */
 export function getLatestFeedback() {
-  return latestBatch;
+  if (!existsSync(STORE_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(STORE_PATH, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Clear the store.
  */
 export function clearFeedback() {
-  latestBatch = null;
+  if (existsSync(STORE_PATH)) unlinkSync(STORE_PATH);
 }
 
 /**
@@ -59,5 +70,5 @@ export function clearFeedback() {
  * @returns {boolean}
  */
 export function hasFeedback() {
-  return latestBatch !== null;
+  return existsSync(STORE_PATH);
 }
