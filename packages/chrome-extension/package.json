@@ -1,9 +1,10 @@
 {
   "name": "@ui-annotator/chrome-extension",
-  "version": "1.0.0",
-  "description": "Chrome extension for dropping annotation pins on UI elements and capturing screenshots",
+  "version": "0.1.0",
+  "description": "Chrome extension for annotating dev sites and sending feedback to Claude Code",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "echo 'No build step — load src/ directly as unpacked extension'"
+    "generate-icon": "node scripts/generate-icon.js"
   }
 }

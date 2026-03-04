@@ -1,122 +1,111 @@
 /**
  * popup.js
- * Controls the extension popup UI.
- * Communicates with content.js (via chrome.tabs.sendMessage) and
- * background.js (via chrome.runtime.sendMessage) to orchestrate
- * pin placement, capture, and feedback submission.
+ * Controls the UI Annotator popup.
+ * - Checks MCP server health on load
+ * - Activates annotation mode on button click
  */
 
-const btnTogglePins = document.getElementById('btn-toggle-pins');
-const btnCapture    = document.getElementById('btn-capture');
-const btnClear      = document.getElementById('btn-clear');
-const statusBar     = document.getElementById('status-bar');
-const pinList       = document.getElementById('pin-list');
-const pinCount      = document.getElementById('pin-count');
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+const statusHint = document.getElementById('status-hint');
+const btnAnnotate = document.getElementById('btn-annotate');
+const errorMsg   = document.getElementById('error-msg');
 
-let pinModeActive = false;
+const HEALTH_URL = 'http://localhost:3847/health';
+const HEALTH_TIMEOUT_MS = 2000;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Server health check ──────────────────────────────────────────────────────
 
 /**
- * Set the status bar text and style.
- * @param {string} text
- * @param {'idle'|'active'|'success'|'error'} type
+ * Fetch the MCP server health endpoint with a 2 s timeout.
+ * @returns {Promise<{ok: boolean, hasFeedback?: boolean}>}
  */
-function setStatus(text, type = 'idle') {
-  statusBar.textContent = text;
-  statusBar.className = `status ${type}`;
-}
+async function checkServerHealth() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
 
-/**
- * Send a message to the content script on the active tab.
- * @param {object} message
- * @returns {Promise<any>}
- */
-async function sendToContent(message) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error('No active tab found.');
-  return chrome.tabs.sendMessage(tab.id, message);
-}
-
-/**
- * Refresh the pin list in the popup from the content script.
- */
-async function refreshPinList() {
   try {
-    const { pins } = await sendToContent({ type: 'GET_PINS' });
-    pinCount.textContent = String(pins.length);
-    pinList.innerHTML = '';
-    pins.forEach((pin) => {
-      const li = document.createElement('li');
-      li.innerHTML = `<strong>#${pin.id}</strong>${pin.comment || '<em>no comment</em>'}`;
-      pinList.appendChild(li);
-    });
+    const res = await fetch(HEALTH_URL, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return { ok: false };
+    const data = await res.json();
+    return { ok: true, hasFeedback: data.hasFeedback };
   } catch {
-    // Content script may not be injected yet — ignore silently
+    clearTimeout(timer);
+    return { ok: false };
   }
 }
 
-// ─── Button handlers ──────────────────────────────────────────────────────────
+function setServerOk() {
+  statusDot.className = 'status-dot ok';
+  statusText.innerHTML = '<strong>Server running</strong>';
+  statusHint.textContent = '';
+  btnAnnotate.disabled = false;
+}
 
-btnTogglePins.addEventListener('click', async () => {
-  try {
-    if (!pinModeActive) {
-      await sendToContent({ type: 'ENABLE_PIN_MODE' });
-      pinModeActive = true;
-      btnTogglePins.textContent = 'Disable Pin Mode';
-      setStatus('Pin mode ON — click elements to annotate', 'active');
-    } else {
-      await sendToContent({ type: 'DISABLE_PIN_MODE' });
-      pinModeActive = false;
-      btnTogglePins.textContent = 'Enable Pin Mode';
-      setStatus('Pin mode OFF', 'idle');
-    }
-    await refreshPinList();
-  } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
+function setServerDown() {
+  statusDot.className = 'status-dot error';
+  statusText.innerHTML = '<strong>Server not running</strong>';
+  statusHint.textContent = 'npm start  (in packages/mcp-server)';
+  btnAnnotate.disabled = true;
+}
+
+// ─── Error display ────────────────────────────────────────────────────────────
+
+/**
+ * @param {string} text
+ */
+function showError(text) {
+  errorMsg.textContent = text;
+  errorMsg.classList.add('visible');
+}
+
+function clearError() {
+  errorMsg.classList.remove('visible');
+  errorMsg.textContent = '';
+}
+
+// ─── Annotate button ──────────────────────────────────────────────────────────
+
+btnAnnotate.addEventListener('click', async () => {
+  clearError();
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (!tab?.id || !tab.url) {
+    showError('No active tab found.');
+    return;
   }
-});
 
-btnCapture.addEventListener('click', async () => {
-  setStatus('Capturing…', 'active');
-  btnCapture.disabled = true;
-
-  try {
-    const captureResult = await sendToContent({ type: 'CAPTURE' });
-
-    if (!captureResult?.screenshotDataUrl) {
-      throw new Error('Capture returned no data.');
-    }
-
-    const sendResult = await chrome.runtime.sendMessage({
-      type: 'SEND_FEEDBACK',
-      payload: captureResult,
-    });
-
-    if (sendResult?.ok) {
-      setStatus('Feedback sent! Claude Code can now read it.', 'success');
-    } else {
-      throw new Error(sendResult?.error ?? 'Unknown send error');
-    }
-  } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
-  } finally {
-    btnCapture.disabled = false;
+  const url = tab.url;
+  if (!url.startsWith('http://localhost') && !url.startsWith('http://127.0.0.1')) {
+    showError('UI Annotator only works on localhost');
+    return;
   }
-});
 
-btnClear.addEventListener('click', async () => {
-  try {
-    await sendToContent({ type: 'CLEAR_PINS' });
-    pinModeActive = false;
-    btnTogglePins.textContent = 'Enable Pin Mode';
-    setStatus('Pins cleared', 'idle');
-    await refreshPinList();
-  } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
-  }
+  chrome.runtime.sendMessage(
+    { action: 'ACTIVATE_ANNOTATION', tabId: tab.id },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        showError(`Could not activate: ${chrome.runtime.lastError.message}`);
+        return;
+      }
+      if (!response?.ok) {
+        showError(`Activation failed: ${response?.error ?? 'unknown error'}`);
+        return;
+      }
+      window.close();
+    }
+  );
 });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-refreshPinList();
+(async () => {
+  const { ok } = await checkServerHealth();
+  if (ok) {
+    setServerOk();
+  } else {
+    setServerDown();
+  }
+})();

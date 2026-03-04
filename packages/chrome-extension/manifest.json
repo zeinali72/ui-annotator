@@ -1,34 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "UI Annotator",
-  "version": "1.0.0",
-  "description": "Drop numbered annotation pins on any UI element, capture a screenshot, and send feedback to Claude Code.",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "storage"
-  ],
-  "host_permissions": [
-    "http://localhost/*",
-    "http://127.0.0.1/*"
-  ],
-  "action": {
-    "default_title": "Start UI Annotation",
-    "default_icon": {
-      "128": "icons/icon128.png"
-    }
-  },
+  "name": "UI Annotator for Claude Code",
+  "version": "0.1.0",
+  "description": "Annotate your dev site and send feedback directly to Claude Code",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "type": "module"
   },
-  "content_scripts": [
+  "content_scripts": [],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_icon": { "128": "icons/icon128.png" }
+  },
+  "web_accessible_resources": [
     {
-      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
-      "js": ["lib/html2canvas.min.js", "src/content.js"],
-      "run_at": "document_idle"
+      "resources": ["lib/html2canvas.min.js"],
+      "matches": ["http://localhost/*", "http://127.0.0.1/*"]
     }
-  ],
-  "icons": {
-    "128": "icons/icon128.png"
-  }
+  ]
 }

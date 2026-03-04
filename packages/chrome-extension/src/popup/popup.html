@@ -2,30 +2,252 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UI Annotator</title>
-  <link rel="stylesheet" href="popup.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 320px;
+      min-height: 400px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      background: #1E1E2E;
+      color: #CDD6F4;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #313244;
+    }
+    .header-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #CDD6F4;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Main content ── */
+    .content {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Server status ── */
+    .status-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 8px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 3px;
+      flex-shrink: 0;
+      background: #45475A;
+      transition: background 0.2s;
+    }
+    .status-dot.ok     { background: #A6E3A1; box-shadow: 0 0 6px #A6E3A150; }
+    .status-dot.error  { background: #F38BA8; }
+    .status-dot.checking { background: #F9E2AF; }
+    .status-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #BAC2DE;
+    }
+    .status-text strong { color: #CDD6F4; }
+    .status-hint {
+      font-size: 11px;
+      color: #6C7086;
+      margin-top: 3px;
+      font-family: ui-monospace, monospace;
+    }
+
+    /* ── Primary button ── */
+    #btn-annotate {
+      width: 100%;
+      padding: 11px 16px;
+      background: #89B4FA;
+      color: #1E1E2E;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: system-ui, sans-serif;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: -0.01em;
+    }
+    #btn-annotate:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    #btn-annotate:active:not(:disabled) { transform: translateY(0); }
+    #btn-annotate:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: #313244;
+      margin: 0 -16px;
+    }
+
+    /* ── Instructions (collapsible) ── */
+    details {
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    summary {
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #89B4FA;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '›';
+      font-size: 16px;
+      color: #6C7086;
+      transition: transform 0.15s;
+    }
+    details[open] summary::after { transform: rotate(90deg); }
+    .steps {
+      padding: 4px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .step {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      font-size: 12px;
+      color: #BAC2DE;
+      line-height: 1.45;
+    }
+    .step-num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #313244;
+      color: #89B4FA;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step code {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      background: #313244;
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #CDD6F4;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 10px 16px;
+      border-top: 1px solid #313244;
+      text-align: center;
+      font-size: 11px;
+      color: #45475A;
+    }
+
+    /* ── Error message ── */
+    #error-msg {
+      display: none;
+      padding: 8px 10px;
+      background: #181825;
+      border: 1px solid #E53935;
+      border-radius: 6px;
+      color: #F38BA8;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #error-msg.visible { display: block; }
+  </style>
 </head>
 <body>
-  <header>
-    <img src="../../icons/icon128.png" alt="UI Annotator" width="32" height="32" />
-    <h1>UI Annotator</h1>
-  </header>
+  <div class="header">
+    <img class="header-icon" src="../../icons/icon128.png" alt="" />
+    <span class="header-title">🖌️ UI Annotator</span>
+  </div>
 
-  <main>
-    <div id="status-bar" class="status idle">Ready</div>
-
-    <div class="controls">
-      <button id="btn-toggle-pins" class="btn primary">Enable Pin Mode</button>
-      <button id="btn-capture" class="btn success">Capture &amp; Send</button>
-      <button id="btn-clear" class="btn danger">Clear Pins</button>
+  <div class="content">
+    <!-- Server status -->
+    <div class="status-row">
+      <div class="status-dot checking" id="status-dot"></div>
+      <div>
+        <div class="status-text" id="status-text"><strong>Checking server…</strong></div>
+        <div class="status-hint" id="status-hint"></div>
+      </div>
     </div>
 
-    <section id="pin-list-section">
-      <h2>Pins (<span id="pin-count">0</span>)</h2>
-      <ol id="pin-list"></ol>
-    </section>
-  </main>
+    <!-- Error message (shown on invalid tab, etc.) -->
+    <div id="error-msg"></div>
+
+    <!-- Primary action -->
+    <button id="btn-annotate" disabled>Annotate Current Page</button>
+
+    <div class="divider"></div>
+
+    <!-- Instructions -->
+    <details>
+      <summary>How to use</summary>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>Start the MCP server: <code>cd packages/mcp-server &amp;&amp; npm start</code></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>Open your dev site on <code>localhost</code> and click <strong>Annotate Current Page</strong></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>Click any element on the page to drop a numbered pin and add a comment</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>Click <strong>Send to Claude</strong> in the annotation toolbar</div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div>In Claude Code, type: <code>Check my UI feedback</code></div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="footer">Only works on localhost</div>
 
   <script src="popup.js"></script>
 </body>
