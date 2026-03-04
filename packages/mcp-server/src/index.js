@@ -70,7 +70,7 @@ server.tool(
         },
         {
           type: 'text',
-          text: JSON.stringify({ screenshotBase64, ...batchMeta }, null, 2),
+          text: JSON.stringify(batchMeta, null, 2),
         },
       ],
     };
